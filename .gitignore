@@ -1,0 +1,39 @@
+# Build folders
+/build/
+/out/
+/bin/
+/obj/
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+compile_commands.json
+Makefile
+
+# Ninja
+.ninja_deps
+.ninja_log
+build.ninja
+
+# Visual Studio
+.vs/
+*.vcxproj.user
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# MSVC build artifacts
+*.obj
+*.pdb
+*.ilk
+*.lib
+*.exp
+*.exe
+*.dll
+
+# Logs / temp
+*.log
+*.tmp
+*.temp

@@ -1,0 +1,25 @@
+#pragma once
+
+enum class TokenType
+{
+    Select,
+    From,
+    Where,
+    Join,
+    On,
+    And,
+    Identifier,
+    Number,
+    StringLiteral,
+    Equal,
+    Greater,
+    Less,
+    GreaterEqual,
+    LessEqual,
+    NotEqual,
+    Comma,
+    LeftParen,
+    RightParen,
+    EndOfFile,
+    Invalid
+};
