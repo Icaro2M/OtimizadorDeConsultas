@@ -3,6 +3,7 @@
 #include <cctype>
 #include <algorithm>
 #include <sstream>
+#include <numeric>
 
 std::string StringUtils::toLowerCopy(const std::string& text)
 {
@@ -25,4 +26,15 @@ std::vector<std::string> StringUtils::split(const std::string text, char divisor
     }
 
     return tokens;
+}
+
+std::string StringUtils::vecToString(const std::vector<std::string>& vector)
+{
+    std::string vectorStr = std::accumulate(vector.begin(), vector.end(), std::string(""),
+        [](const std::string& a, const std::string& b)
+        {
+            return a.empty() ? b : a + ", " + b;
+        });
+
+    return vectorStr;
 }
