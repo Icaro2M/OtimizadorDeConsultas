@@ -15,6 +15,8 @@
 #include "execution/JoinNode.h"
 #include "execution/ProjectionNode.h"
 
+#include "optimizer/Optimizer.h"
+
 void printExecutionTree(const ExecutionNode* node, int depth = 0)
 {
     if (node == nullptr)
@@ -55,17 +57,10 @@ int main()
     try
     {
         std::string sqlQuery =
-            "select cliente.nome, pedido.datapedido, produto.nome, categoria.descricao "
-            "from cliente "
-            "join pedido on cliente.idcliente = pedido.cliente_idcliente "
-            "join pedido_has_produto on pedido.idpedido = pedido_has_produto.pedido_idpedido "
-            "join produto on pedido_has_produto.produto_idproduto = produto.idproduto "
-            "join categoria on produto.categoria_idcategoria = categoria.idcategoria "
-            "where cliente.idcliente <> 2 "
-            "and pedido.valortotalpedido >= 100 "
-            "and pedido_has_produto.quantidade >= 2 "
-            "and produto.preco >= 50 "
-            "and categoria.descricao <> 45";
+            "select Cliente.Nome "
+            "from Cliente "
+            "join Pedido on Cliente.idCliente = Pedido.Cliente_idCliente "
+            "where Cliente.DataRegistro > 2020 ";
 
         Lexer lexer(sqlQuery);
         std::vector<Token> tokens = lexer.tokenize();
@@ -79,6 +74,7 @@ int main()
 
         ExecutionPlanBuilder planBuilder;
         ExecutionPlan executionPlan = planBuilder.build(parsedQuery);
+
 
         std::cout << "TOKENS:\n";
         for (const Token& t : tokens)
@@ -136,6 +132,17 @@ int main()
         std::cout << "PLANO DE EXECUCAO\n";
         std::cout << "====================\n";
         printExecutionTree(executionPlan.getRoot());
+
+
+        Optimizer optimizer;
+
+        ExecutionPlan optimizedPlan = optimizer.optimize(std::move(executionPlan));
+
+        std::cout << "\n====================\n";
+        std::cout << "PLANO DE EXECUCAO OTIMIZADO\n";
+        std::cout << "====================\n";
+
+        printExecutionTree(optimizedPlan.getRoot());
     }
     catch (const std::exception& e)
     {

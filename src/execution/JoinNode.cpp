@@ -1,37 +1,47 @@
 #include "JoinNode.h"
 
-
-
-JoinNode::JoinNode(const Condition& joinCondition,
-	std::unique_ptr<ExecutionNode> leftChild,
-	std::unique_ptr<ExecutionNode> rightChild)
-	: m_JoinCondition(joinCondition),
-	m_LeftChild(std::move(leftChild)),
-	m_RightChild(std::move(rightChild))
+JoinNode::JoinNode(
+    const Condition& joinCondition,
+    std::unique_ptr<ExecutionNode> leftChild,
+    std::unique_ptr<ExecutionNode> rightChild
+)
+    : m_JoinCondition(joinCondition),
+    m_LeftChild(std::move(leftChild)),
+    m_RightChild(std::move(rightChild))
 {
 }
 
 ExecutionNodeType JoinNode::getType() const
 {
-	return ExecutionNodeType::Join;
+    return ExecutionNodeType::Join;
 }
 
 std::string JoinNode::toString() const
 {
-	return "Join(" + m_JoinCondition.leftOperand + " " + m_JoinCondition.op + " " + m_JoinCondition.rightOperand + ")";
+    return "Join(" + m_JoinCondition.leftOperand + " " + m_JoinCondition.op + " " + m_JoinCondition.rightOperand + ")";
 }
 
 const Condition& JoinNode::getJoinCondition() const
 {
-	return m_JoinCondition;
+    return m_JoinCondition;
 }
 
 const ExecutionNode* JoinNode::getLeftChild() const
 {
-	return m_LeftChild.get();
+    return m_LeftChild.get();
 }
 
 const ExecutionNode* JoinNode::getRightChild() const
 {
-	return m_RightChild.get();
+    return m_RightChild.get();
+}
+
+std::unique_ptr<ExecutionNode> JoinNode::releaseLeftChild()
+{
+    return std::move(m_LeftChild);
+}
+
+std::unique_ptr<ExecutionNode> JoinNode::releaseRightChild()
+{
+    return std::move(m_RightChild);
 }

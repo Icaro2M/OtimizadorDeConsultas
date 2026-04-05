@@ -11,5 +11,7 @@ private:
 
 public:
 	ExecutionPlan(std::unique_ptr<ExecutionNode> root);
+
 	const ExecutionNode* getRoot() const;
+	std::unique_ptr<ExecutionNode> releaseRoot();
 };

@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <sstream>
 #include <numeric>
+#include <unordered_set>
 
 std::string StringUtils::toLowerCopy(const std::string& text)
 {
@@ -37,4 +38,61 @@ std::string StringUtils::vecToString(const std::vector<std::string>& vector)
         });
 
     return vectorStr;
+}
+
+std::vector<std::string> StringUtils::vecIntersection(
+    const std::vector<std::string>& vectorA,
+    const std::vector<std::string>& vectorB
+)
+{
+    std::unordered_set<std::string> s(vectorA.begin(), vectorA.end());
+    std::vector<std::string> intersection;
+
+    intersection.reserve(std::min(vectorA.size(), vectorB.size()));
+
+    for (const auto& item : vectorB) {
+        if (s.erase(item)) {
+            intersection.push_back(item);
+        }
+    }
+    return intersection;
+}
+
+std::vector<std::string> StringUtils::vecUnion(
+    const std::vector<std::string>& vectorA,
+    const std::vector<std::string>& vectorB
+) {
+    std::unordered_set<std::string> s(vectorA.begin(), vectorA.end());
+
+    for (const auto& item : vectorB) {
+        s.insert(item);
+    }
+
+    return std::vector<std::string>(s.begin(), s.end());
+}
+
+std::vector<std::string> StringUtils::removeDuplicates(const std::vector<std::string>& values)
+{
+    std::vector<std::string> result;
+
+    for (const std::string& value : values)
+    {
+        bool alreadyExists = false;
+
+        for (const std::string& existing : result)
+        {
+            if (existing == value)
+            {
+                alreadyExists = true;
+                break;
+            }
+        }
+
+        if (!alreadyExists)
+        {
+            result.push_back(value);
+        }
+    }
+
+    return result;
 }

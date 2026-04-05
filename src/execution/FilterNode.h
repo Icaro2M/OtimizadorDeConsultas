@@ -2,9 +2,8 @@
 
 #include "../query/Condition.h"
 #include "ExecutionNode.h"
-
-#include <string>
 #include <memory>
+#include <string>
 
 class FilterNode : public ExecutionNode
 {
@@ -20,4 +19,5 @@ public:
 
     const Condition& getCondition() const;
     const ExecutionNode* getChild() const;
+    std::unique_ptr<ExecutionNode> releaseChild();
 };
