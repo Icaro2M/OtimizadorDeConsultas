@@ -50,4 +50,7 @@ private:
     );
 
     std::unique_ptr<ExecutionNode> reorderJoinTree(std::unique_ptr<ExecutionNode> node);
+
+    int getOperatorRestrictionWeight(const std::string& op) const;
+
 };

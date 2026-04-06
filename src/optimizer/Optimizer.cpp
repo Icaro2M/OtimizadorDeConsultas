@@ -42,6 +42,23 @@ std::unique_ptr<ExecutionNode> Optimizer::optimizeNode(std::unique_ptr<Execution
         std::unique_ptr<ExecutionNode> pushedChild =
             tryPushDownProjection(finalColumns, std::move(optimizedChild));
 
+        if (pushedChild && pushedChild->getType() == ExecutionNodeType::Projection)
+        {
+            ProjectionNode* childProjection =
+                dynamic_cast<ProjectionNode*>(pushedChild.get());
+
+            if (childProjection->getSelectedFields() == finalColumns)
+            {
+                std::unique_ptr<ExecutionNode> grandChild =
+                    childProjection->releaseChild();
+
+                return std::make_unique<ProjectionNode>(
+                    finalColumns,
+                    std::move(grandChild)
+                );
+            }
+        }
+
         return std::make_unique<ProjectionNode>(
             finalColumns,
             std::move(pushedChild)
@@ -400,7 +417,8 @@ int Optimizer::computeRestrictionScore(const ExecutionNode* node) const
         const FilterNode* filterNode =
             dynamic_cast<const FilterNode*>(node);
 
-        return 1 + computeRestrictionScore(filterNode->getChild());
+        return getOperatorRestrictionWeight(filterNode->getCondition().op)
+            + computeRestrictionScore(filterNode->getChild());
     }
 
     if (nodeType == ExecutionNodeType::Join)
@@ -496,6 +514,31 @@ void Optimizer::collectJoinConditions(
     conditions.push_back(joinNode->getJoinCondition());
 }
 
+int Optimizer::getOperatorRestrictionWeight(const std::string& op) const
+{
+    if (op == "=")
+    {
+        return 4;
+    }
+
+    if (op == "<" || op == ">")
+    {
+        return 3;
+    }
+
+    if (op == "<=" || op == ">=")
+    {
+        return 2;
+    }
+
+    if (op == "<>")
+    {
+        return 1;
+    }
+
+    return 1;
+}
+
 std::unique_ptr<ExecutionNode> Optimizer::rebuildJoinTree(
     std::vector<std::unique_ptr<ExecutionNode>>& operands,
     const std::vector<Condition>& conditions
@@ -518,13 +561,20 @@ std::unique_ptr<ExecutionNode> Optimizer::rebuildJoinTree(
 
     while (!operands.empty())
     {
-        bool joinCreated = false;
+        bool foundCandidate = false;
+        std::size_t bestOperandIndex = 0;
+        std::size_t bestConditionIndex = 0;
+        int bestScore = -1;
 
-        std::unordered_set<std::string> currentTables = collectTables(currentTree.get());
+        std::unordered_set<std::string> currentTables =
+            collectTables(currentTree.get());
 
         for (std::size_t operandIndex = 0; operandIndex < operands.size(); ++operandIndex)
         {
-            std::unordered_set<std::string> operandTables = collectTables(operands[operandIndex].get());
+            std::unordered_set<std::string> operandTables =
+                collectTables(operands[operandIndex].get());
+
+            int operandScore = computeRestrictionScore(operands[operandIndex].get());
 
             for (std::size_t conditionIndex = 0; conditionIndex < remainingConditions.size(); ++conditionIndex)
             {
@@ -558,34 +608,36 @@ std::unique_ptr<ExecutionNode> Optimizer::rebuildJoinTree(
                     continue;
                 }
 
-                std::unique_ptr<ExecutionNode> nextOperand =
-                    std::move(operands[operandIndex]);
-
-                operands.erase(operands.begin() + static_cast<std::ptrdiff_t>(operandIndex));
-                remainingConditions.erase(
-                    remainingConditions.begin() + static_cast<std::ptrdiff_t>(conditionIndex)
-                );
-
-                currentTree = std::make_unique<JoinNode>(
-                    selectedCondition,
-                    std::move(currentTree),
-                    std::move(nextOperand)
-                );
-
-                joinCreated = true;
-                break;
-            }
-
-            if (joinCreated)
-            {
-                break;
+                if (!foundCandidate || operandScore > bestScore)
+                {
+                    foundCandidate = true;
+                    bestOperandIndex = operandIndex;
+                    bestConditionIndex = conditionIndex;
+                    bestScore = operandScore;
+                }
             }
         }
 
-        if (!joinCreated)
+        if (!foundCandidate)
         {
             break;
         }
+
+        Condition selectedCondition = remainingConditions[bestConditionIndex];
+
+        std::unique_ptr<ExecutionNode> nextOperand =
+            std::move(operands[bestOperandIndex]);
+
+        operands.erase(operands.begin() + static_cast<std::ptrdiff_t>(bestOperandIndex));
+        remainingConditions.erase(
+            remainingConditions.begin() + static_cast<std::ptrdiff_t>(bestConditionIndex)
+        );
+
+        currentTree = std::make_unique<JoinNode>(
+            selectedCondition,
+            std::move(currentTree),
+            std::move(nextOperand)
+        );
     }
 
     return currentTree;

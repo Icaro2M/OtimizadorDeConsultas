@@ -59,8 +59,10 @@ int main()
         std::string sqlQuery =
             "select Cliente.Nome "
             "from Cliente "
-            "join Pedido on Cliente.idCliente = Pedido.Cliente_idCliente "
-            "where Cliente.DataRegistro > 2020 ";
+            "join Pedido on Cliente.idCliente <> Pedido.Cliente_idCliente "
+            "join Status on Pedido.Status_idStatus = Status.idStatus "
+            "where Cliente.idCliente > 10 "
+            "and Status.idStatus = 2";
 
         Lexer lexer(sqlQuery);
         std::vector<Token> tokens = lexer.tokenize();
