@@ -1,9 +1,12 @@
 #include "Lexer.h"
 #include <cctype>
+#include <stdexcept>
+
+#include "../utils/StringUtils.h"
 
 Lexer::Lexer(const std::string& source) : m_Source(source)
 {
-	m_Current = 0;
+    m_Current = 0;
 }
 
 std::vector<Token> Lexer::tokenize()
@@ -13,52 +16,51 @@ std::vector<Token> Lexer::tokenize()
 
     while (!isAtEnd())
         scanToken();
+
     addToken(TokenType::EndOfFile, "");
     return m_Tokens;
 }
 
-
 char Lexer::peek()
 {
-	if (isAtEnd())
-		return '\0';
+    if (isAtEnd())
+        return '\0';
 
-	return m_Source[m_Current];
+    return m_Source[m_Current];
 }
 
 char Lexer::peekNext()
 {
-	if (m_Current + 1 < m_Source.size())
-		return m_Source[m_Current + 1];
+    if (m_Current + 1 < m_Source.size())
+        return m_Source[m_Current + 1];
 
-	return '\0';
+    return '\0';
 }
-
 
 char Lexer::advance()
 {
-	if (isAtEnd())
-		return '\0';
+    if (isAtEnd())
+        return '\0';
 
-	char current = m_Source[m_Current];
-	m_Current++;
-	return current;
+    char current = m_Source[m_Current];
+    m_Current++;
+    return current;
 }
 
 bool Lexer::isAtEnd()
 {
-	return m_Current >= m_Source.size();
+    return m_Current >= m_Source.size();
 }
 
 bool Lexer::match(char expected)
 {
-	if (peek() == expected)
-	{
-		advance();
-		return true;
-	}
-		
-	return false;
+    if (peek() == expected)
+    {
+        advance();
+        return true;
+    }
+
+    return false;
 }
 
 void Lexer::scanToken()
@@ -86,6 +88,12 @@ void Lexer::scanToken()
         return;
     }
 
+    if (c == '\'')
+    {
+        scanString();
+        return;
+    }
+
     if (c == ',')
     {
         addToken(TokenType::Comma, ",");
@@ -104,7 +112,7 @@ void Lexer::scanToken()
         return;
     }
 
-    addToken(TokenType::Invalid, std::string(1, c));
+    throw std::runtime_error("Erro lexico: caractere invalido: " + std::string(1, c));
 }
 
 void Lexer::scanIdentifier(char firstChar)
@@ -117,17 +125,19 @@ void Lexer::scanIdentifier(char firstChar)
         lexeme += advance();
     }
 
-    if (lexeme == "select")
+    std::string lowerLexeme = StringUtils::toLowerCopy(lexeme);
+
+    if (lowerLexeme == "select")
         addToken(TokenType::Select, lexeme);
-    else if (lexeme == "from")
+    else if (lowerLexeme == "from")
         addToken(TokenType::From, lexeme);
-    else if (lexeme == "where")
+    else if (lowerLexeme == "where")
         addToken(TokenType::Where, lexeme);
-    else if (lexeme == "join")
+    else if (lowerLexeme == "join")
         addToken(TokenType::Join, lexeme);
-    else if (lexeme == "on")
+    else if (lowerLexeme == "on")
         addToken(TokenType::On, lexeme);
-    else if (lexeme == "and")
+    else if (lowerLexeme == "and")
         addToken(TokenType::And, lexeme);
     else
         addToken(TokenType::Identifier, lexeme);
@@ -142,6 +152,7 @@ void Lexer::scanNumber(char firstChar)
     {
         lexeme += advance();
     }
+
     addToken(TokenType::Number, lexeme);
 }
 
@@ -176,8 +187,23 @@ void Lexer::scanOperator(char firstChar)
     }
 }
 
-void Lexer::addToken(TokenType type, const std::string& lexeme)
+void Lexer::scanString()
 {
-	m_Tokens.push_back(Token{ type, lexeme });
+    std::string lexeme;
+
+    while (peek() != '\'' && peek() != '\0')
+    {
+        lexeme += advance();
+    }
+
+    if (peek() == '\0')
+        throw std::runtime_error("Erro lexico: string literal nao terminada.");
+
+    advance();
+    addToken(TokenType::StringLiteral, lexeme);
 }
 
+void Lexer::addToken(TokenType type, const std::string& lexeme)
+{
+    m_Tokens.push_back(Token{ type, lexeme });
+}

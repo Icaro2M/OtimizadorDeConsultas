@@ -2,15 +2,13 @@
 
 #include "../lexer/Token.h"
 #include "../query/Query.h"
-#include "../query/JoinClause.h"
-
-#include <string>
 #include <vector>
+#include <string>
 
 class Parser
 {
 private:
-    std::vector<Token> m_Tokens;
+    const std::vector<Token>& m_Tokens;
     size_t m_Current;
 
 private:
@@ -18,7 +16,10 @@ private:
     void parseFrom(Query& query);
     void parseJoin(Query& query);
     void parseWhere(Query& query);
+
     Condition parseCondition();
+    Operand parseOperand();
+    Operand buildOperand(const Token& token);
 
     Token consume(TokenType type, const std::string& errorMessage);
     bool match(TokenType type);

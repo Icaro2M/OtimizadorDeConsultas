@@ -18,7 +18,7 @@ ExecutionNodeType JoinNode::getType() const
 
 std::string JoinNode::toString() const
 {
-    return "Join(" + m_JoinCondition.leftOperand + " " + m_JoinCondition.op + " " + m_JoinCondition.rightOperand + ")";
+    return "Join(" + m_JoinCondition.leftOperand.value + " " + m_JoinCondition.op + " " + m_JoinCondition.rightOperand.value + ")";
 }
 
 const Condition& JoinNode::getJoinCondition() const

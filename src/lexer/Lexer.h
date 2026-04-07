@@ -16,6 +16,7 @@ private:
 	void scanIdentifier(char firstChar);
 	void scanNumber(char firstChar);
 	void scanOperator(char firstChar);
+	void scanString();
 
 	void addToken(TokenType type, const std::string& lexeme);
 

@@ -19,9 +19,14 @@ private:
     void validateWhereConditions(const Query& query) const;
 
     void validateCondition(const Condition& condition, const Query& query) const;
-    void validateOperand(const std::string& operand, const Query& query) const;
+    void validateOperand(const Operand& operand, const Query& query) const;
+    void validateConditionTypes(const Condition& condition, const Query& query) const;
 
-    bool isNumeric(const std::string& text) const;
+    ColumnType resolveOperandType(const Operand& operand, const Query& query) const;
+    ColumnType resolveIdentifierType(const std::string& identifier, const Query& query) const;
+
+    bool isNumericType(ColumnType type) const;
+    bool isComparableWithOrdering(ColumnType type) const;
     bool isQualifiedField(const std::string& field) const;
 
     void validateQualifiedField(const std::string& field) const;

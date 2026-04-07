@@ -57,12 +57,12 @@ int main()
     try
     {
         std::string sqlQuery =
-            "select Cliente.Nome "
+            "SELECT Cliente.Nome "
             "from Cliente "
             "join Pedido on Cliente.idCliente <> Pedido.Cliente_idCliente "
             "join Status on Pedido.Status_idStatus = Status.idStatus "
             "where Cliente.idCliente > 10 "
-            "and Status.idStatus = 2";
+            "and Status.Descricao = 'teste'";
 
         Lexer lexer(sqlQuery);
         std::vector<Token> tokens = lexer.tokenize();
@@ -76,7 +76,6 @@ int main()
 
         ExecutionPlanBuilder planBuilder;
         ExecutionPlan executionPlan = planBuilder.build(parsedQuery);
-
 
         std::cout << "TOKENS:\n";
         for (const Token& t : tokens)
@@ -103,9 +102,9 @@ int main()
             for (const JoinClause& join : parsedQuery.getJoins())
             {
                 std::cout << "- " << join.tableName << " ON "
-                    << join.onCondition.leftOperand << " "
+                    << join.onCondition.leftOperand.value << " "
                     << join.onCondition.op << " "
-                    << join.onCondition.rightOperand << "\n";
+                    << join.onCondition.rightOperand.value << "\n";
             }
         }
         else
@@ -118,9 +117,9 @@ int main()
         {
             for (const Condition& condition : parsedQuery.getWhereConditions())
             {
-                std::cout << "- " << condition.leftOperand << " "
+                std::cout << "- " << condition.leftOperand.value << " "
                     << condition.op << " "
-                    << condition.rightOperand << "\n";
+                    << condition.rightOperand.value << "\n";
             }
         }
         else
@@ -135,9 +134,7 @@ int main()
         std::cout << "====================\n";
         printExecutionTree(executionPlan.getRoot());
 
-
         Optimizer optimizer;
-
         ExecutionPlan optimizedPlan = optimizer.optimize(std::move(executionPlan));
 
         std::cout << "\n====================\n";

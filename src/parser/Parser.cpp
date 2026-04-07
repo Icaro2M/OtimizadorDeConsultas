@@ -56,9 +56,9 @@ void Parser::parseJoin(Query& query)
     consume(TokenType::On, "esperado ON apos a tabela do JOIN");
 
     Condition condition = parseCondition();
-    JoinClause joinText{ tableToken.lexeme , condition};
+    JoinClause joinClause{ tableToken.lexeme, condition };
 
-    query.addJoin(joinText);
+    query.addJoin(joinClause);
 }
 
 void Parser::parseWhere(Query& query)
@@ -73,12 +73,7 @@ void Parser::parseWhere(Query& query)
 
 Condition Parser::parseCondition()
 {
-    Token leftOperand;
-
-    if (check(TokenType::Identifier) || check(TokenType::Number) || check(TokenType::StringLiteral))
-        leftOperand = advance();
-    else
-        throw std::runtime_error("esperado operando esquerdo da condicao");
+    Operand leftOperand = parseOperand();
 
     Token opToken;
 
@@ -96,14 +91,31 @@ Condition Parser::parseCondition()
         throw std::runtime_error("esperado operador relacional na condicao");
     }
 
-    Token rightOperand;
+    Operand rightOperand = parseOperand();
 
+    return Condition{ leftOperand, opToken.lexeme, rightOperand };
+}
+
+Operand Parser::parseOperand()
+{
     if (check(TokenType::Identifier) || check(TokenType::Number) || check(TokenType::StringLiteral))
-        rightOperand = advance();
-    else
-        throw std::runtime_error("esperado operando direito da condicao");
+    {
+        Token token = advance();
+        return buildOperand(token);
+    }
 
-    return Condition{ leftOperand.lexeme,opToken.lexeme,rightOperand.lexeme };
+    throw std::runtime_error("esperado operando na condicao");
+}
+
+Operand Parser::buildOperand(const Token& token)
+{
+    if (token.type == TokenType::Identifier)
+        return Operand{ token.lexeme, OperandType::Identifier };
+
+    if (token.type == TokenType::Number)
+        return Operand{ token.lexeme, OperandType::Number };
+
+    return Operand{ token.lexeme, OperandType::StringLiteral };
 }
 
 Token Parser::consume(TokenType type, const std::string& errorMessage)

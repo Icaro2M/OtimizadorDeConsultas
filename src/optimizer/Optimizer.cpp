@@ -9,6 +9,14 @@
 #include <utility>
 #include <algorithm>
 
+namespace
+{
+    bool isIdentifierOperand(const Operand& operand)
+    {
+        return operand.type == OperandType::Identifier;
+    }
+}
+
 ExecutionPlan Optimizer::optimize(ExecutionPlan plan)
 {
     std::unique_ptr<ExecutionNode> root = plan.releaseRoot();
@@ -307,14 +315,15 @@ std::unordered_set<std::string> Optimizer::extractReferencedTables(const Conditi
 {
     std::unordered_set<std::string> tables;
 
-    auto processOperand = [&tables](const std::string& operand)
+    auto processOperand = [&tables](const Operand& operand)
         {
-            std::vector<std::string> parts = StringUtils::split(operand, '.');
+            if (!isIdentifierOperand(operand))
+                return;
+
+            std::vector<std::string> parts = StringUtils::split(operand.value, '.');
 
             if (parts.size() == 2)
-            {
                 tables.insert(parts[0]);
-            }
         };
 
     processOperand(condition.leftOperand);
@@ -327,14 +336,15 @@ std::vector<std::string> Optimizer::extractReferencedColumns(const Condition& co
 {
     std::vector<std::string> columns;
 
-    auto processOperand = [&columns](const std::string& operand)
+    auto processOperand = [&columns](const Operand& operand)
         {
-            std::vector<std::string> parts = StringUtils::split(operand, '.');
+            if (!isIdentifierOperand(operand))
+                return;
+
+            std::vector<std::string> parts = StringUtils::split(operand.value, '.');
 
             if (parts.size() == 2)
-            {
-                columns.push_back(operand);
-            }
+                columns.push_back(operand.value);
         };
 
     processOperand(condition.leftOperand);

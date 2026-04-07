@@ -12,7 +12,7 @@ ExecutionNodeType FilterNode::getType() const
 
 std::string FilterNode::toString() const
 {
-    return "Filter(" + m_Condition.leftOperand + " " + m_Condition.op + " " + m_Condition.rightOperand + ")";
+    return "Filter(" + m_Condition.leftOperand.value + " " + m_Condition.op + " " + m_Condition.rightOperand.value + ")";
 }
 
 const Condition& FilterNode::getCondition() const
