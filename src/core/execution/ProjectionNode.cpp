@@ -1,5 +1,5 @@
 #include "ProjectionNode.h"
-#include "../utils/StringUtils.h"
+#include "../../utils/StringUtils.h"
 
 ProjectionNode::ProjectionNode(
     const std::vector<std::string>& selectedFields,

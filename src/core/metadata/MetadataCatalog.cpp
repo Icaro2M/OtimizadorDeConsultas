@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <stdexcept>
 
-#include "../utils/StringUtils.h"
+#include "../../utils/StringUtils.h"
 
 MetadataCatalog::MetadataCatalog()
 {

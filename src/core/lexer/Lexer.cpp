@@ -2,7 +2,7 @@
 #include <cctype>
 #include <stdexcept>
 
-#include "../utils/StringUtils.h"
+#include "../../utils/StringUtils.h"
 
 Lexer::Lexer(const std::string& source) : m_Source(source)
 {

@@ -4,7 +4,7 @@
 #include "../execution/JoinNode.h"
 #include "../execution/ProjectionNode.h"
 #include "../execution/TableScanNode.h"
-#include "../utils/StringUtils.h"
+#include "../../utils/StringUtils.h"
 
 #include <utility>
 #include <algorithm>

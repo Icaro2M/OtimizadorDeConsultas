@@ -2,20 +2,20 @@
 #include <string>
 #include <vector>
 
-#include "lexer/Lexer.h"
-#include "parser/Parser.h"
-#include "metadata/MetadataCatalog.h"
-#include "semantic/SemanticValidator.h"
+#include "core/lexer/Lexer.h"
+#include "core/parser/Parser.h"
+#include "core/metadata/MetadataCatalog.h"
+#include "core/semantic/SemanticValidator.h"
 
-#include "execution/ExecutionPlan.h"
-#include "execution/ExecutionPlanBuilder.h"
-#include "execution/ExecutionNode.h"
-#include "execution/TableScanNode.h"
-#include "execution/FilterNode.h"
-#include "execution/JoinNode.h"
-#include "execution/ProjectionNode.h"
+#include "core/execution/ExecutionPlan.h"
+#include "core/execution/ExecutionPlanBuilder.h"
+#include "core/execution/ExecutionNode.h"
+#include "core/execution/TableScanNode.h"
+#include "core/execution/FilterNode.h"
+#include "core/execution/JoinNode.h"
+#include "core/execution/ProjectionNode.h"
 
-#include "optimizer/Optimizer.h"
+#include "core/optimizer/Optimizer.h"
 
 void printExecutionTree(const ExecutionNode* node, int depth = 0)
 {

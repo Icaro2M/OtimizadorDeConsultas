@@ -1,6 +1,6 @@
 #include "SemanticValidator.h"
 
-#include "../utils/StringUtils.h"
+#include "../../utils/StringUtils.h"
 
 #include <stdexcept>
 
