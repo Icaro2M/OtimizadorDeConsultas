@@ -62,7 +62,7 @@ int main()
             "join Pedido_has_Produto on Pedido.idPedido = Pedido_has_Produto.Pedido_idPedido "
             "join Produto on Produto.idProduto = Pedido_has_Produto.Produto_idProduto "
             "where Produto.Preco > 100.0 "
-            "and Pedido.ValorTotalPedido > 20.0.0";
+            "and Pedido.ValorTotalPedido > 200.0";
 
         Lexer lexer(sqlQuery);
         std::vector<Token> tokens = lexer.tokenize();
