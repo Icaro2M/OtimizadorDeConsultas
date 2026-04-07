@@ -42,3 +42,10 @@ target_link_libraries(OtimizadorConsultas PRIVATE glfw)
 if (CMAKE_VERSION VERSION_GREATER 3.12)
     set_property(TARGET OtimizadorConsultas PROPERTY CXX_STANDARD 20)
 endif()
+
+find_package(OpenGL REQUIRED)
+
+target_link_libraries(OtimizadorConsultas
+    PRIVATE
+    OpenGL::GL
+)

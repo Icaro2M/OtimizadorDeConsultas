@@ -1,14 +1,15 @@
 #pragma once
 
 #include "QueryProcessingResult.h"
-#include "../core/execution/ExecutionPlan.h"
-#include "../core/execution/ExecutionNode.h"
-#include "../core/metadata/MetadataCatalog.h"
 
 #include <string>
 #include <vector>
 
-class QueryProcessorService
+class ExecutionPlan;
+class ExecutionNode;
+class MetadataCatalog;
+
+class QueryProcessorService final
 {
 public:
     QueryProcessorService(const MetadataCatalog& metadataCatalog);

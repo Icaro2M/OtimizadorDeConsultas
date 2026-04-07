@@ -1,152 +1,104 @@
-#include <iostream>
-#include <string>
-#include <vector>
+#include "ui/ImGuiLayer.h"
+#include "ui/MainWindow.h"
 
-#include "core/lexer/Lexer.h"
-#include "core/parser/Parser.h"
+#include "app/QueryProcessorService.h"
+
 #include "core/metadata/MetadataCatalog.h"
-#include "core/semantic/SemanticValidator.h"
 
-#include "core/execution/ExecutionPlan.h"
-#include "core/execution/ExecutionPlanBuilder.h"
-#include "core/execution/ExecutionNode.h"
-#include "core/execution/TableScanNode.h"
-#include "core/execution/FilterNode.h"
-#include "core/execution/JoinNode.h"
-#include "core/execution/ProjectionNode.h"
+#include <GLFW/glfw3.h>
 
-#include "core/optimizer/Optimizer.h"
+#include <iostream>
+#include <stdexcept>
 
-void printExecutionTree(const ExecutionNode* node, int depth = 0)
+namespace
 {
-    if (node == nullptr)
+    void glfwErrorCallback(int error, const char* description)
     {
-        return;
+        std::cerr << "GLFW Error " << error << ": " << description << std::endl;
     }
 
-    std::string indent(depth * 4, ' ');
-    std::cout << indent << node->toString() << "\n";
-
-    if (const ProjectionNode* projectionNode = dynamic_cast<const ProjectionNode*>(node))
+    void setupMetadataCatalog(MetadataCatalog& metadataCatalog)
     {
-        printExecutionTree(projectionNode->getChild(), depth + 1);
-        return;
-    }
-
-    if (const FilterNode* filterNode = dynamic_cast<const FilterNode*>(node))
-    {
-        printExecutionTree(filterNode->getChild(), depth + 1);
-        return;
-    }
-
-    if (const JoinNode* joinNode = dynamic_cast<const JoinNode*>(node))
-    {
-        printExecutionTree(joinNode->getLeftChild(), depth + 1);
-        printExecutionTree(joinNode->getRightChild(), depth + 1);
-        return;
-    }
-
-    if (dynamic_cast<const TableScanNode*>(node))
-    {
-        return;
+        // TODO:
+        // Preencha aqui com o cadastro das tabelas/colunas que o seu projeto já usa.
+        //
+        // Exemplo conceitual apenas:
+        // metadataCatalog.addTable(...);
+        // metadataCatalog.addColumn(...);
+        //
+        // Essa função existe para a main não ficar poluída.
     }
 }
 
 int main()
 {
+    glfwSetErrorCallback(glfwErrorCallback);
+
+    if (!glfwInit())
+    {
+        std::cerr << "Falha ao inicializar GLFW." << std::endl;
+        return -1;
+    }
+
     try
     {
-        std::string sqlQuery =
-            "SELECT Produto.Nome "
-            "from Pedido "
-            "join Pedido_has_Produto on Pedido.idPedido = Pedido_has_Produto.Pedido_idPedido "
-            "join Produto on Produto.idProduto = Pedido_has_Produto.Produto_idProduto "
-            "where Produto.Preco > 100.0 "
-            "and Pedido.ValorTotalPedido > 200.0";
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-        Lexer lexer(sqlQuery);
-        std::vector<Token> tokens = lexer.tokenize();
+#ifdef __APPLE__
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
+#endif
 
-        Parser parser(tokens);
-        Query parsedQuery = parser.parse();
+        GLFWwindow* window = glfwCreateWindow(1280, 720, "Otimizador de Consultas", nullptr, nullptr);
+
+        if (window == nullptr)
+        {
+            glfwTerminate();
+            throw std::runtime_error("Falha ao criar a janela GLFW.");
+        }
+
+        glfwMakeContextCurrent(window);
+        glfwSwapInterval(1);
+
+        ImGuiLayer imguiLayer;
+        imguiLayer.initialize(window, "#version 330");
 
         MetadataCatalog metadataCatalog;
-        SemanticValidator validator(metadataCatalog);
-        validator.validate(parsedQuery);
+        setupMetadataCatalog(metadataCatalog);
 
-        ExecutionPlanBuilder planBuilder;
-        ExecutionPlan executionPlan = planBuilder.build(parsedQuery);
+        QueryProcessorService queryProcessorService(metadataCatalog);
+        MainWindow mainWindow(queryProcessorService);
 
-        std::cout << "TOKENS:\n";
-        for (const Token& t : tokens)
+        while (!glfwWindowShouldClose(window))
         {
-            std::cout << "<" << static_cast<int>(t.type) << " | " << t.lexeme << ">\n";
+            glfwPollEvents();
+
+            int displayWidth = 0;
+            int displayHeight = 0;
+            glfwGetFramebufferSize(window, &displayWidth, &displayHeight);
+            glViewport(0, 0, displayWidth, displayHeight);
+
+            glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT);
+
+            imguiLayer.beginFrame();
+            mainWindow.render();
+            imguiLayer.endFrame();
+
+            glfwSwapBuffers(window);
         }
 
-        std::cout << "\n====================\n";
-        std::cout << "QUERY PARSEADA\n";
-        std::cout << "====================\n";
+        imguiLayer.shutdown();
+        glfwDestroyWindow(window);
+        glfwTerminate();
 
-        std::cout << "FROM:\n";
-        std::cout << parsedQuery.getFromTable() << "\n\n";
-
-        std::cout << "SELECT FIELDS:\n";
-        for (const std::string& field : parsedQuery.getSelectFields())
-        {
-            std::cout << "- " << field << "\n";
-        }
-
-        std::cout << "\nJOINS:\n";
-        if (parsedQuery.hasJoins())
-        {
-            for (const JoinClause& join : parsedQuery.getJoins())
-            {
-                std::cout << "- " << join.tableName << " ON "
-                    << join.onCondition.leftOperand.value << " "
-                    << join.onCondition.op << " "
-                    << join.onCondition.rightOperand.value << "\n";
-            }
-        }
-        else
-        {
-            std::cout << "nenhum\n";
-        }
-
-        std::cout << "\nWHERE CONDITIONS:\n";
-        if (parsedQuery.hasWhereConditions())
-        {
-            for (const Condition& condition : parsedQuery.getWhereConditions())
-            {
-                std::cout << "- " << condition.leftOperand.value << " "
-                    << condition.op << " "
-                    << condition.rightOperand.value << "\n";
-            }
-        }
-        else
-        {
-            std::cout << "nenhuma\n";
-        }
-
-        std::cout << "\nVALIDACAO SEMANTICA: OK\n";
-
-        std::cout << "\n====================\n";
-        std::cout << "PLANO DE EXECUCAO\n";
-        std::cout << "====================\n";
-        printExecutionTree(executionPlan.getRoot());
-
-        Optimizer optimizer;
-        ExecutionPlan optimizedPlan = optimizer.optimize(std::move(executionPlan));
-
-        std::cout << "\n====================\n";
-        std::cout << "PLANO DE EXECUCAO OTIMIZADO\n";
-        std::cout << "====================\n";
-
-        printExecutionTree(optimizedPlan.getRoot());
+        return 0;
     }
     catch (const std::exception& e)
     {
-        std::cout << "\nERRO: " << e.what() << "\n";
+        std::cerr << "Erro fatal: " << e.what() << std::endl;
+        glfwTerminate();
+        return -1;
     }
-
-    return 0;
 }
