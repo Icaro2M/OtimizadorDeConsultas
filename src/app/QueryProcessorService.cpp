@@ -342,10 +342,10 @@ std::string QueryProcessorService::buildRelationalAlgebra(const ExecutionPlan& p
                         ? buildExpression(*joinNode->getRightChild())
                         : "?";
 
-                    return "(" + leftExpr + ") ⋈[" + predicate + "] (" + rightExpr + ")";
+                    return "(" + leftExpr + ") X [" + predicate + "] (" + rightExpr + ")";
                 }
 
-                return "(?) ⋈[?] (?)";
+                return "(?) X [?] (?)";
             }
 
             return "UnknownNode";

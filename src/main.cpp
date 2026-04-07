@@ -16,18 +16,6 @@ namespace
     {
         std::cerr << "GLFW Error " << error << ": " << description << std::endl;
     }
-
-    void setupMetadataCatalog(MetadataCatalog& metadataCatalog)
-    {
-        // TODO:
-        // Preencha aqui com o cadastro das tabelas/colunas que o seu projeto já usa.
-        //
-        // Exemplo conceitual apenas:
-        // metadataCatalog.addTable(...);
-        // metadataCatalog.addColumn(...);
-        //
-        // Essa função existe para a main não ficar poluída.
-    }
 }
 
 int main()
@@ -65,7 +53,6 @@ int main()
         imguiLayer.initialize(window, "#version 330");
 
         MetadataCatalog metadataCatalog;
-        setupMetadataCatalog(metadataCatalog);
 
         QueryProcessorService queryProcessorService(metadataCatalog);
         MainWindow mainWindow(queryProcessorService);

@@ -3,7 +3,7 @@
 #include "../app/QueryProcessingResult.h"
 
 #include "panels/ExecutionOrderPanel.h"
-#include "panels/PlanTreePanel.h"
+#include "panels/PlanGraphPanel.h"
 #include "panels/QueryInputPanel.h"
 #include "panels/RelationalAlgebraPanel.h"
 
@@ -17,21 +17,32 @@ public:
     void render();
 
 private:
+    enum class PlanViewMode
+    {
+        Optimized,
+        Original
+    };
+
+private:
     void processCurrentQuery();
 
     void renderHeader() const;
     void renderQuerySection();
     void renderInfoSection() const;
-    void renderPlansSection() const;
+    void renderPlansSection();
+    void renderPlanTabs();
 
 private:
     const QueryProcessorService& m_QueryProcessorService;
 
     QueryInputPanel m_QueryInputPanel;
+
     RelationalAlgebraPanel m_RelationalAlgebraPanel;
-    PlanTreePanel m_PlanTreePanel;
+    PlanGraphPanel m_PlanGraphPanel;
     ExecutionOrderPanel m_ExecutionOrderPanel;
 
     QueryProcessingResult m_CurrentResult;
+
     bool m_HasResult = false;
+    PlanViewMode m_CurrentPlanView = PlanViewMode::Optimized;
 };
