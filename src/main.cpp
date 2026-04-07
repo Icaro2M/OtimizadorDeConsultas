@@ -57,12 +57,12 @@ int main()
     try
     {
         std::string sqlQuery =
-            "SELECT Cliente.Nome "
-            "from Cliente "
-            "join Pedido on Cliente.idCliente <> Pedido.Cliente_idCliente "
-            "join Status on Pedido.Status_idStatus = Status.idStatus "
-            "where Cliente.idCliente > 10 "
-            "and Status.Descricao = 'teste'";
+            "SELECT Produto.Nome "
+            "from Pedido "
+            "join Pedido_has_Produto on Pedido.idPedido = Pedido_has_Produto.Pedido_idPedido "
+            "join Produto on Produto.idProduto = Pedido_has_Produto.Produto_idProduto "
+            "where Produto.Preco > 100.0 "
+            "and Pedido.ValorTotalPedido > 20.0.0";
 
         Lexer lexer(sqlQuery);
         std::vector<Token> tokens = lexer.tokenize();

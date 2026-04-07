@@ -551,105 +551,86 @@ int Optimizer::getOperatorRestrictionWeight(const std::string& op) const
 
 std::unique_ptr<ExecutionNode> Optimizer::rebuildJoinTree(
     std::vector<std::unique_ptr<ExecutionNode>>& operands,
-    const std::vector<Condition>& conditions
+    std::vector<Condition>& conditions
 )
 {
-    if (operands.empty())
+    while (operands.size() > 1)
     {
-        return nullptr;
-    }
-
-    if (operands.size() == 1)
-    {
-        return std::move(operands[0]);
-    }
-
-    std::vector<Condition> remainingConditions = conditions;
-
-    std::unique_ptr<ExecutionNode> currentTree = std::move(operands[0]);
-    operands.erase(operands.begin());
-
-    while (!operands.empty())
-    {
-        bool foundCandidate = false;
-        std::size_t bestOperandIndex = 0;
-        std::size_t bestConditionIndex = 0;
+        int bestI = -1;
+        int bestJ = -1;
+        int bestConditionIndex = -1;
         int bestScore = -1;
 
-        std::unordered_set<std::string> currentTables =
-            collectTables(currentTree.get());
-
-        for (std::size_t operandIndex = 0; operandIndex < operands.size(); ++operandIndex)
+        for (size_t i = 0; i < operands.size(); i++)
         {
-            std::unordered_set<std::string> operandTables =
-                collectTables(operands[operandIndex].get());
-
-            int operandScore = computeRestrictionScore(operands[operandIndex].get());
-
-            for (std::size_t conditionIndex = 0; conditionIndex < remainingConditions.size(); ++conditionIndex)
+            for (size_t j = i + 1; j < operands.size(); j++)
             {
-                Condition selectedCondition = remainingConditions[conditionIndex];
+                std::unordered_set<std::string> tablesI = collectTables(operands[i].get());
+                std::unordered_set<std::string> tablesJ = collectTables(operands[j].get());
 
-                std::unordered_set<std::string> referencedTables =
-                    extractReferencedTables(selectedCondition);
-
-                if (referencedTables.size() != 2)
+                for (size_t c = 0; c < conditions.size(); c++)
                 {
-                    continue;
-                }
+                    const Condition& cond = conditions[c];
+                    std::unordered_set<std::string> condTables = extractReferencedTables(cond);
 
-                auto it = referencedTables.begin();
-                const std::string firstTable = *it;
-                ++it;
-                const std::string secondTable = *it;
+                    bool connectsI = false;
+                    bool connectsJ = false;
 
-                bool firstInCurrent = currentTables.find(firstTable) != currentTables.end();
-                bool secondInCurrent = currentTables.find(secondTable) != currentTables.end();
+                    for (const std::string& table : condTables)
+                    {
+                        if (tablesI.find(table) != tablesI.end())
+                            connectsI = true;
 
-                bool firstInOperand = operandTables.find(firstTable) != operandTables.end();
-                bool secondInOperand = operandTables.find(secondTable) != operandTables.end();
+                        if (tablesJ.find(table) != tablesJ.end())
+                            connectsJ = true;
+                    }
 
-                bool canConnect =
-                    (firstInCurrent && secondInOperand) ||
-                    (secondInCurrent && firstInOperand);
+                    if (connectsI && connectsJ)
+                    {
+                        int score =
+                            computeRestrictionScore(operands[i].get()) +
+                            computeRestrictionScore(operands[j].get()) +
+                            getOperatorRestrictionWeight(cond.op);
 
-                if (!canConnect)
-                {
-                    continue;
-                }
-
-                if (!foundCandidate || operandScore > bestScore)
-                {
-                    foundCandidate = true;
-                    bestOperandIndex = operandIndex;
-                    bestConditionIndex = conditionIndex;
-                    bestScore = operandScore;
+                        if (score > bestScore)
+                        {
+                            bestScore = score;
+                            bestI = static_cast<int>(i);
+                            bestJ = static_cast<int>(j);
+                            bestConditionIndex = static_cast<int>(c);
+                        }
+                    }
                 }
             }
         }
 
-        if (!foundCandidate)
+        if (bestI == -1 || bestJ == -1 || bestConditionIndex == -1)
         {
             break;
         }
 
-        Condition selectedCondition = remainingConditions[bestConditionIndex];
+        std::unique_ptr<ExecutionNode> leftNode = std::move(operands[bestI]);
+        std::unique_ptr<ExecutionNode> rightNode = std::move(operands[bestJ]);
+        Condition selectedCondition = conditions[bestConditionIndex];
 
-        std::unique_ptr<ExecutionNode> nextOperand =
-            std::move(operands[bestOperandIndex]);
-
-        operands.erase(operands.begin() + static_cast<std::ptrdiff_t>(bestOperandIndex));
-        remainingConditions.erase(
-            remainingConditions.begin() + static_cast<std::ptrdiff_t>(bestConditionIndex)
-        );
-
-        currentTree = std::make_unique<JoinNode>(
+        std::unique_ptr<ExecutionNode> newJoinNode = std::make_unique<JoinNode>(
             selectedCondition,
-            std::move(currentTree),
-            std::move(nextOperand)
+            std::move(leftNode),
+            std::move(rightNode)
         );
+
+        if (bestI > bestJ)
+            std::swap(bestI, bestJ);
+
+        operands.erase(operands.begin() + bestJ);
+        operands.erase(operands.begin() + bestI);
+        conditions.erase(conditions.begin() + bestConditionIndex);
+
+        operands.push_back(std::move(newJoinNode));
     }
 
-    return currentTree;
-}
+    if (operands.empty())
+        return nullptr;
 
+    return std::move(operands[0]);
+}

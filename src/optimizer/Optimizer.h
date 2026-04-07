@@ -46,7 +46,7 @@ private:
 
     std::unique_ptr<ExecutionNode> rebuildJoinTree(
         std::vector<std::unique_ptr<ExecutionNode>>& operands,
-        const std::vector<Condition>& conditions
+        std::vector<Condition>& conditions
     );
 
     std::unique_ptr<ExecutionNode> reorderJoinTree(std::unique_ptr<ExecutionNode> node);

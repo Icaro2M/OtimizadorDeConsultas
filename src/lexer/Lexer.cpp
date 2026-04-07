@@ -153,6 +153,16 @@ void Lexer::scanNumber(char firstChar)
         lexeme += advance();
     }
 
+    if (peek() == '.' && std::isdigit(static_cast<unsigned char>(peekNext())))
+    {
+        lexeme += advance();
+
+        while (std::isdigit(static_cast<unsigned char>(peek())))
+        {
+            lexeme += advance();
+        }
+    }
+
     addToken(TokenType::Number, lexeme);
 }
 

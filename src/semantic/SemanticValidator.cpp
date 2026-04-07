@@ -162,6 +162,9 @@ ColumnType SemanticValidator::resolveOperandType(const Operand& operand, const Q
 {
     if (operand.type == OperandType::Number)
     {
+        if (operand.value.find('.') != std::string::npos)
+            return ColumnType::Decimal;
+
         return ColumnType::Integer;
     }
 
