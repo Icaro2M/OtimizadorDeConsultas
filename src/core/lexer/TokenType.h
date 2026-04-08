@@ -1,5 +1,3 @@
-#pragma once
-
 enum class TokenType
 {
     Select,
@@ -20,6 +18,7 @@ enum class TokenType
     Comma,
     LeftParen,
     RightParen,
+    Semicolon,
     EndOfFile,
     Invalid
 };

@@ -112,6 +112,12 @@ void Lexer::scanToken()
         return;
     }
 
+    if (c == ';')
+    {
+        addToken(TokenType::Semicolon, ";");
+        return;
+    }
+
     throw std::runtime_error("Erro lexico: caractere invalido: " + std::string(1, c));
 }
 

@@ -142,7 +142,7 @@ void SemanticValidator::validateConditionTypes(const Condition& condition, const
             );
         }
 
-        if (leftType != rightType)
+        if (!areCompatibleTypes(leftType, rightType))
         {
             throw std::invalid_argument(
                 "tipos incompativeis na condicao: " +
@@ -229,6 +229,17 @@ bool SemanticValidator::isQualifiedField(const std::string& field) const
 {
     return field.find('.') != std::string::npos;
 }
+
+bool SemanticValidator::areCompatibleTypes(ColumnType leftType, ColumnType rightType) const
+{
+    if (isNumericType(leftType) && isNumericType(rightType))
+    {
+        return true;
+    }
+
+    return leftType == rightType;
+}
+
 
 void SemanticValidator::validateQualifiedField(const std::string& field) const
 {

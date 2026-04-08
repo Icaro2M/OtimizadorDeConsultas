@@ -13,7 +13,6 @@ Query Parser::parse()
 
     consume(TokenType::Select, "esperado SELECT no inicio da consulta");
     parseSelectList(query);
-
     consume(TokenType::From, "esperado FROM apos a lista de campos");
     parseFrom(query);
 
@@ -27,6 +26,7 @@ Query Parser::parse()
         parseWhere(query);
     }
 
+    match(TokenType::Semicolon);
     consume(TokenType::EndOfFile, "tokens inesperados no final da consulta");
 
     return query;
@@ -73,10 +73,11 @@ void Parser::parseWhere(Query& query)
 
 Condition Parser::parseCondition()
 {
+    bool hasLeftParen = match(TokenType::LeftParen);
+
     Operand leftOperand = parseOperand();
 
     Token opToken;
-
     if (match(TokenType::Equal) ||
         match(TokenType::Greater) ||
         match(TokenType::Less) ||
@@ -92,6 +93,11 @@ Condition Parser::parseCondition()
     }
 
     Operand rightOperand = parseOperand();
+
+    if (hasLeftParen)
+    {
+        consume(TokenType::RightParen, "esperado ')' ao final da condicao");
+    }
 
     return Condition{ leftOperand, opToken.lexeme, rightOperand };
 }

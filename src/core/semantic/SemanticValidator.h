@@ -28,6 +28,7 @@ private:
     bool isNumericType(ColumnType type) const;
     bool isComparableWithOrdering(ColumnType type) const;
     bool isQualifiedField(const std::string& field) const;
+    bool areCompatibleTypes(ColumnType leftType, ColumnType rightType) const;
 
     void validateQualifiedField(const std::string& field) const;
     void validateUnqualifiedField(const std::string& field, const Query& query) const;
