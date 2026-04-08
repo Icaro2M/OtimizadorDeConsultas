@@ -8,11 +8,23 @@
 
 namespace
 {
+    struct LayoutConfig
+    {
+        float nodeWidth = 160.0f;
+        float nodeHeight = 56.0f;
+        float levelGap = 95.0f;
+        float siblingGap = 36.0f;
+        float headerHeight = 22.0f;
+        float paddingX = 24.0f;
+        float paddingY = 24.0f;
+    };
+
     struct VisualNode
     {
         int id = 0;
         std::string title;
         std::string content;
+        std::string fullLabel;
         std::vector<int> children;
 
         int depth = 0;
@@ -31,18 +43,11 @@ namespace
         int nextId = 1;
     };
 
-    constexpr float NODE_WIDTH = 160.0f;
-    constexpr float NODE_HEIGHT = 56.0f;
-    constexpr float LEVEL_GAP = 95.0f;
-    constexpr float SIBLING_GAP = 36.0f;
-    constexpr float HEADER_HEIGHT = 22.0f;
-    constexpr float PADDING_X = 24.0f;
-    constexpr float PADDING_Y = 24.0f;
-
     std::string trim(const std::string& text)
     {
         const std::string whitespace = " \t\n\r";
         const size_t begin = text.find_first_not_of(whitespace);
+
         if (begin == std::string::npos)
         {
             return "";
@@ -55,6 +60,7 @@ namespace
     std::string extractTitle(const std::string& label)
     {
         const size_t openParen = label.find('(');
+
         if (openParen == std::string::npos)
         {
             return trim(label);
@@ -141,14 +147,15 @@ namespace
         return nullptr;
     }
 
-    int buildTree(const PlanNodeView& inputNode, BuildContext& context, int depth)
+    int buildTree(const PlanNodeView& inputNode, BuildContext& context, int depth, const LayoutConfig& layoutConfig)
     {
         VisualNode node;
         node.id = context.nextId++;
         node.title = extractTitle(inputNode.label);
         node.content = extractContent(inputNode.label);
+        node.fullLabel = inputNode.label;
         node.depth = depth;
-        node.size = ImVec2(NODE_WIDTH, NODE_HEIGHT);
+        node.size = ImVec2(layoutConfig.nodeWidth, layoutConfig.nodeHeight);
 
         applyStyle(node);
 
@@ -157,7 +164,8 @@ namespace
 
         for (const PlanNodeView& child : inputNode.children)
         {
-            const int childId = buildTree(child, context, depth + 1);
+            const int childId = buildTree(child, context, depth + 1, layoutConfig);
+
             VisualNode* current = findNode(context.nodes, currentId);
             if (current != nullptr)
             {
@@ -168,7 +176,7 @@ namespace
         return currentId;
     }
 
-    float layoutTree(std::vector<VisualNode>& nodes, int nodeId, float& nextLeafX)
+    float layoutTree(std::vector<VisualNode>& nodes, int nodeId, float& nextLeafX, const LayoutConfig& layoutConfig)
     {
         VisualNode* node = findNode(nodes, nodeId);
         if (node == nullptr)
@@ -176,26 +184,28 @@ namespace
             return 0.0f;
         }
 
-        node->pos.y = static_cast<float>(node->depth) * LEVEL_GAP;
+        node->pos.y = static_cast<float>(node->depth) * layoutConfig.levelGap;
 
         if (node->children.empty())
         {
             node->pos.x = nextLeafX;
-            nextLeafX += NODE_WIDTH + SIBLING_GAP;
-            return node->pos.x + NODE_WIDTH * 0.5f;
+            nextLeafX += layoutConfig.nodeWidth + layoutConfig.siblingGap;
+            return node->pos.x + layoutConfig.nodeWidth * 0.5f;
         }
 
         std::vector<float> childCenters;
+        childCenters.reserve(node->children.size());
+
         for (int childId : node->children)
         {
-            childCenters.push_back(layoutTree(nodes, childId, nextLeafX));
+            childCenters.push_back(layoutTree(nodes, childId, nextLeafX, layoutConfig));
         }
 
         const float minCenter = *std::min_element(childCenters.begin(), childCenters.end());
         const float maxCenter = *std::max_element(childCenters.begin(), childCenters.end());
 
         const float centerX = (minCenter + maxCenter) * 0.5f;
-        node->pos.x = centerX - NODE_WIDTH * 0.5f;
+        node->pos.x = centerX - layoutConfig.nodeWidth * 0.5f;
 
         return centerX;
     }
@@ -220,7 +230,7 @@ namespace
             maxY = std::max(maxY, node.pos.y + node.size.y);
         }
 
-        return ImVec2(maxX + PADDING_X, maxY + PADDING_Y);
+        return ImVec2(maxX, maxY);
     }
 
     std::string ellipsize(const std::string& text, float maxWidth)
@@ -249,9 +259,14 @@ namespace
         return result + "...";
     }
 
-    void drawGrid(ImDrawList* drawList, const ImVec2& min, const ImVec2& max)
+    void drawGrid(ImDrawList* drawList, const ImVec2& min, const ImVec2& max, float zoom)
     {
-        const float step = 32.0f;
+        const float step = 32.0f * zoom;
+        if (step < 12.0f)
+        {
+            return;
+        }
+
         const ImU32 color = IM_COL32(90, 100, 120, 30);
 
         for (float x = min.x; x < max.x; x += step)
@@ -265,9 +280,10 @@ namespace
         }
     }
 
-    void drawLinks(ImDrawList* drawList, const std::vector<VisualNode>& nodes)
+    void drawLinks(ImDrawList* drawList, const std::vector<VisualNode>& nodes, float zoom)
     {
         const ImU32 linkColor = IM_COL32(125, 175, 245, 255);
+        const float thickness = std::max(1.5f, 2.5f * zoom);
 
         for (const VisualNode& parent : nodes)
         {
@@ -295,45 +311,115 @@ namespace
                     ImVec2(end.x, midY),
                     end,
                     linkColor,
-                    2.5f);
+                    thickness);
             }
         }
     }
 
-    void drawNode(ImDrawList* drawList, const VisualNode& node)
+    void drawNode(ImDrawList* drawList, const VisualNode& node, const LayoutConfig& layoutConfig, float zoom)
     {
-        const float rounding = 8.0f;
+        const float rounding = 8.0f * zoom;
         const ImVec2 min = node.pos;
         const ImVec2 max(node.pos.x + node.size.x, node.pos.y + node.size.y);
-        const ImVec2 headerMax(max.x, min.y + HEADER_HEIGHT);
+        const ImVec2 headerMax(max.x, min.y + layoutConfig.headerHeight);
 
         drawList->AddRectFilled(min, max, node.bodyColor, rounding);
         drawList->AddRectFilled(min, headerMax, node.headerColor, rounding, ImDrawFlags_RoundCornersTop);
-        drawList->AddRect(min, max, node.borderColor, rounding, 0, 1.8f);
+        drawList->AddRect(min, max, node.borderColor, rounding, 0, std::max(1.2f, 1.8f * zoom));
 
         drawList->AddText(
-            ImVec2(min.x + 8.0f, min.y + 3.0f),
+            ImGui::GetFont(),
+            ImGui::GetFontSize() * zoom,
+            ImVec2(min.x + 8.0f * zoom, min.y + 3.0f * zoom),
             IM_COL32(255, 255, 255, 255),
             node.title.c_str());
 
-        const std::string visibleContent = ellipsize(node.content, node.size.x - 16.0f);
+        const std::string visibleContent = ellipsize(node.content, node.size.x - 16.0f * zoom);
 
         drawList->AddText(
-            ImVec2(min.x + 8.0f, min.y + HEADER_HEIGHT + 10.0f),
+            ImGui::GetFont(),
+            ImGui::GetFontSize() * zoom,
+            ImVec2(min.x + 8.0f * zoom, min.y + layoutConfig.headerHeight + 8.0f * zoom),
             IM_COL32(235, 235, 235, 255),
             visibleContent.c_str());
     }
 
-    void drawNodes(ImDrawList* drawList, const std::vector<VisualNode>& nodes)
+    bool isMouseHoveringNode(const VisualNode& node)
+    {
+        const ImVec2 mousePos = ImGui::GetIO().MousePos;
+
+        const bool insideX = mousePos.x >= node.pos.x && mousePos.x <= (node.pos.x + node.size.x);
+        const bool insideY = mousePos.y >= node.pos.y && mousePos.y <= (node.pos.y + node.size.y);
+
+        return insideX && insideY;
+    }
+
+    void drawNodeTooltip(const VisualNode& node)
+    {
+        if (!isMouseHoveringNode(node))
+        {
+            return;
+        }
+
+        ImGui::BeginTooltip();
+        ImGui::Text("%s", node.title.c_str());
+        ImGui::Separator();
+        ImGui::TextWrapped("%s", node.fullLabel.c_str());
+        ImGui::EndTooltip();
+    }
+
+    void drawNodes(ImDrawList* drawList, const std::vector<VisualNode>& nodes, const LayoutConfig& layoutConfig, float zoom)
     {
         for (const VisualNode& node : nodes)
         {
-            drawNode(drawList, node);
+            drawNode(drawList, node, layoutConfig, zoom);
+        }
+
+        for (const VisualNode& node : nodes)
+        {
+            drawNodeTooltip(node);
+        }
+    }
+
+    LayoutConfig buildResponsiveLayout(const ImVec2& available, float requestedHeight)
+    {
+        LayoutConfig config;
+
+        const float effectiveWidth = std::max(available.x, 300.0f);
+        const float effectiveHeight = std::max(requestedHeight, 220.0f);
+
+        config.nodeWidth = std::clamp(effectiveWidth * 0.14f, 135.0f, 180.0f);
+        config.nodeHeight = std::clamp(effectiveHeight * 0.11f, 48.0f, 64.0f);
+        config.levelGap = std::clamp(effectiveHeight * 0.17f, 72.0f, 110.0f);
+        config.siblingGap = std::clamp(effectiveWidth * 0.03f, 20.0f, 42.0f);
+        config.headerHeight = std::clamp(config.nodeHeight * 0.38f, 20.0f, 26.0f);
+        config.paddingX = std::clamp(effectiveWidth * 0.02f, 18.0f, 28.0f);
+        config.paddingY = std::clamp(effectiveHeight * 0.04f, 18.0f, 28.0f);
+
+        return config;
+    }
+
+    void applyZoomToNodes(std::vector<VisualNode>& nodes, LayoutConfig& layoutConfig, float zoom)
+    {
+        layoutConfig.nodeWidth *= zoom;
+        layoutConfig.nodeHeight *= zoom;
+        layoutConfig.levelGap *= zoom;
+        layoutConfig.siblingGap *= zoom;
+        layoutConfig.headerHeight *= zoom;
+        layoutConfig.paddingX *= zoom;
+        layoutConfig.paddingY *= zoom;
+
+        for (VisualNode& node : nodes)
+        {
+            node.size.x *= zoom;
+            node.size.y *= zoom;
+            node.pos.x *= zoom;
+            node.pos.y *= zoom;
         }
     }
 }
 
-void PlanGraphPanel::render(const PlanNodeView& rootNode, const char* panelId) const
+void PlanGraphPanel::render(const PlanNodeView& rootNode, const char* panelId, float height)
 {
     if (rootNode.label.empty())
     {
@@ -341,42 +427,92 @@ void PlanGraphPanel::render(const PlanNodeView& rootNode, const char* panelId) c
         return;
     }
 
-    ImGui::BeginChild(panelId, ImVec2(0.0f, 470.0f), true);
+    ImGui::PushID(panelId);
+
+    if (ImGui::Button("-"))
+    {
+        m_Zoom = std::max(0.60f, m_Zoom - 0.10f);
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button("100%"))
+    {
+        m_Zoom = 1.0f;
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button("+"))
+    {
+        m_Zoom = std::min(1.80f, m_Zoom + 0.10f);
+    }
+
+    ImGui::SameLine();
+    ImGui::Text("Zoom: %.0f%%", m_Zoom * 100.0f);
+
+    ImGui::BeginChild("GraphPanelChild", ImVec2(0.0f, height), true, ImGuiWindowFlags_HorizontalScrollbar);
+
+    const bool panelHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup);
+    const ImGuiIO& io = ImGui::GetIO();
+
+    if (panelHovered && io.KeyCtrl && io.MouseWheel != 0.0f)
+    {
+        const float step = 0.10f;
+        if (io.MouseWheel > 0.0f)
+        {
+            m_Zoom = std::min(1.80f, m_Zoom + step);
+        }
+        else if (io.MouseWheel < 0.0f)
+        {
+            m_Zoom = std::max(0.60f, m_Zoom - step);
+        }
+    }
 
     const ImVec2 canvasMin = ImGui::GetCursorScreenPos();
     const ImVec2 available = ImGui::GetContentRegionAvail();
 
+    LayoutConfig layoutConfig = buildResponsiveLayout(available, height);
+
     BuildContext context;
-    const int rootId = buildTree(rootNode, context, 0);
+    const int rootId = buildTree(rootNode, context, 0, layoutConfig);
 
     float nextLeafX = 0.0f;
-    layoutTree(context.nodes, rootId, nextLeafX);
-    offsetNodes(context.nodes, PADDING_X, PADDING_Y);
+    layoutTree(context.nodes, rootId, nextLeafX, layoutConfig);
+
+    offsetNodes(context.nodes, layoutConfig.paddingX, layoutConfig.paddingY);
+
+    applyZoomToNodes(context.nodes, layoutConfig, m_Zoom);
 
     ImVec2 contentSize = computeBounds(context.nodes);
 
-    float extraOffsetX = 0.0f;
     if (contentSize.x < available.x)
     {
-        extraOffsetX = (available.x - contentSize.x) * 0.5f;
+        const float extraOffsetX = (available.x - contentSize.x) * 0.5f;
         offsetNodes(context.nodes, extraOffsetX, 0.0f);
         contentSize = computeBounds(context.nodes);
     }
 
-    const ImVec2 finalSize(
-        std::max(available.x, contentSize.x),
-        std::max(available.y, contentSize.y));
+    if (contentSize.y < available.y)
+    {
+        const float extraOffsetY = (available.y - contentSize.y) * 0.18f;
+        offsetNodes(context.nodes, 0.0f, extraOffsetY);
+        contentSize = computeBounds(context.nodes);
+    }
 
-    ImGui::InvisibleButton((std::string("canvas_") + panelId).c_str(), finalSize);
+    const ImVec2 finalSize(
+        std::max(available.x, contentSize.x + layoutConfig.paddingX),
+        std::max(available.y, contentSize.y + layoutConfig.paddingY));
+
+    ImGui::InvisibleButton("canvas", finalSize);
 
     const ImVec2 canvasMax(canvasMin.x + finalSize.x, canvasMin.y + finalSize.y);
 
     ImDrawList* drawList = ImGui::GetWindowDrawList();
-
     drawList->PushClipRect(canvasMin, canvasMax, true);
 
     drawList->AddRectFilled(canvasMin, canvasMax, IM_COL32(20, 24, 34, 255), 8.0f);
-    drawGrid(drawList, canvasMin, canvasMax);
+    drawGrid(drawList, canvasMin, canvasMax, m_Zoom);
 
     for (VisualNode& node : context.nodes)
     {
@@ -384,10 +520,11 @@ void PlanGraphPanel::render(const PlanNodeView& rootNode, const char* panelId) c
         node.pos.y += canvasMin.y;
     }
 
-    drawLinks(drawList, context.nodes);
-    drawNodes(drawList, context.nodes);
+    drawLinks(drawList, context.nodes, m_Zoom);
+    drawNodes(drawList, context.nodes, layoutConfig, m_Zoom);
 
     drawList->PopClipRect();
 
     ImGui::EndChild();
+    ImGui::PopID();
 }

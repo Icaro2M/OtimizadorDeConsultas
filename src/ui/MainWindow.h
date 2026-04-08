@@ -26,23 +26,23 @@ private:
 private:
     void processCurrentQuery();
 
-    void renderHeader() const;
     void renderQuerySection();
     void renderInfoSection() const;
-    void renderPlansSection();
+    void renderBottomSection();
     void renderPlanTabs();
 
 private:
     const QueryProcessorService& m_QueryProcessorService;
 
     QueryInputPanel m_QueryInputPanel;
-
     RelationalAlgebraPanel m_RelationalAlgebraPanel;
-    PlanGraphPanel m_PlanGraphPanel;
     ExecutionOrderPanel m_ExecutionOrderPanel;
+    PlanGraphPanel m_PlanGraphPanel;
 
     QueryProcessingResult m_CurrentResult;
 
     bool m_HasResult = false;
     PlanViewMode m_CurrentPlanView = PlanViewMode::Optimized;
+
+    float m_ExecutionOrderPanelWidth = 320.0f;
 };

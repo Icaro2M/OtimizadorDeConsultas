@@ -41,7 +41,7 @@ void ImGuiLayer::initialize(GLFWwindow* window, const char* glslVersion)
 
     ImFont* customFont = io.Fonts->AddFontFromFileTTF(
         "../../../assets/fonts/NotoSans-Regular.ttf",
-        18.0f,
+        22.0f,
         &fontConfig,
         glyphRanges
     );
