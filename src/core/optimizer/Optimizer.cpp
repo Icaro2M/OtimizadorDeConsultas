@@ -124,7 +124,7 @@ std::unique_ptr<ExecutionNode> Optimizer::tryPushDownFilter(
         return std::make_unique<FilterNode>(condition, nullptr);
     }
 
-    if (child->getType() != ExecutionNodeType::Join)
+    else if (child->getType() != ExecutionNodeType::Join)
     {
         return std::make_unique<FilterNode>(condition, std::move(child));
     }

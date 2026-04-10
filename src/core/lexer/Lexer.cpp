@@ -146,7 +146,7 @@ void Lexer::scanIdentifier(char firstChar)
     else if (lowerLexeme == "and")
         addToken(TokenType::And, lexeme);
     else
-        addToken(TokenType::Identifier, lexeme);
+        addToken(TokenType::Identifier, lowerLexeme);
 }
 
 void Lexer::scanNumber(char firstChar)

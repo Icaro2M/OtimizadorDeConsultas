@@ -71,7 +71,7 @@ void MainWindow::renderQuerySection()
 
 void MainWindow::renderInfoSection() const
 {
-    ImGui::BeginChild("InfoSection", ImVec2(0.0f, 170.0f), true);
+    ImGui::BeginChild("InfoSection", ImVec2(0.0f, 185.0f), true);
 
     if (!m_HasResult)
     {
