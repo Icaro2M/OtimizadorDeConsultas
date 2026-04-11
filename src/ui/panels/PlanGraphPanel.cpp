@@ -361,11 +361,29 @@ namespace
             return;
         }
 
-        ImGui::BeginTooltip();
-        ImGui::Text("%s", node.title.c_str());
-        ImGui::Separator();
-        ImGui::TextWrapped("%s", node.fullLabel.c_str());
-        ImGui::EndTooltip();
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 12.0f));
+        ImGui::PushStyleColor(ImGuiCol_PopupBg, IM_COL32(30, 30, 35, 245)); 
+        ImGui::PushStyleColor(ImGuiCol_Border, node.borderColor); 
+
+        if (ImGui::BeginTooltip())
+        {
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 1.0f), "%s", node.title.c_str());
+
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            float maxWidth = ImGui::GetFontSize() * 35.0f;
+
+            ImGui::PushTextWrapPos(maxWidth);
+            ImGui::TextUnformatted(node.fullLabel.c_str());
+            ImGui::PopTextWrapPos();
+
+            ImGui::Spacing();
+            ImGui::EndTooltip();
+        }
+
+        ImGui::PopStyleColor(2);
+        ImGui::PopStyleVar();
     }
 
     void drawNodes(ImDrawList* drawList, const std::vector<VisualNode>& nodes, const LayoutConfig& layoutConfig, float zoom)

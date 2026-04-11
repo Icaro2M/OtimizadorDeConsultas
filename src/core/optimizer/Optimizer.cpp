@@ -124,6 +124,21 @@ std::unique_ptr<ExecutionNode> Optimizer::tryPushDownFilter(
         return std::make_unique<FilterNode>(condition, nullptr);
     }
 
+    if (child->getType() == ExecutionNodeType::Projection)
+    {
+        ProjectionNode* projNode = dynamic_cast<ProjectionNode*>(child.get());
+
+        std::vector<std::string> projFields = projNode->getSelectedFields();
+        std::unique_ptr<ExecutionNode> projChild = projNode->releaseChild();
+
+        std::unique_ptr<ExecutionNode> pushedFilter =
+            tryPushDownFilter(condition, std::move(projChild));
+
+        return std::make_unique<ProjectionNode>(
+            projFields,
+            std::move(pushedFilter)
+        );
+    }
     else if (child->getType() != ExecutionNodeType::Join)
     {
         return std::make_unique<FilterNode>(condition, std::move(child));
@@ -165,8 +180,7 @@ std::unique_ptr<ExecutionNode> Optimizer::tryPushDownFilter(
         std::unique_ptr<ExecutionNode> leftChild = joinNode->releaseLeftChild();
         std::unique_ptr<ExecutionNode> rightChild = joinNode->releaseRightChild();
 
-        leftChild = std::make_unique<FilterNode>(condition, std::move(leftChild));
-        leftChild = optimizeNode(std::move(leftChild));
+        leftChild = tryPushDownFilter(condition, std::move(leftChild));
 
         return std::make_unique<JoinNode>(
             joinNode->getJoinCondition(),
@@ -180,8 +194,7 @@ std::unique_ptr<ExecutionNode> Optimizer::tryPushDownFilter(
         std::unique_ptr<ExecutionNode> leftChild = joinNode->releaseLeftChild();
         std::unique_ptr<ExecutionNode> rightChild = joinNode->releaseRightChild();
 
-        rightChild = std::make_unique<FilterNode>(condition, std::move(rightChild));
-        rightChild = optimizeNode(std::move(rightChild));
+        rightChild = tryPushDownFilter(condition, std::move(rightChild));
 
         return std::make_unique<JoinNode>(
             joinNode->getJoinCondition(),
@@ -275,11 +288,21 @@ std::unique_ptr<ExecutionNode> Optimizer::tryPushDownProjection(
         std::unique_ptr<ExecutionNode> rightChild =
             tryPushDownProjection(rightColumns, joinNode->releaseRightChild());
 
-        return std::make_unique<JoinNode>(
+        std::unique_ptr<ExecutionNode> newJoin = std::make_unique<JoinNode>(
             joinNode->getJoinCondition(),
             std::move(leftChild),
             std::move(rightChild)
         );
+
+        if (allRequired.size() > requiredColumns.size())
+        {
+            return std::make_unique<ProjectionNode>(
+                requiredColumns,
+                std::move(newJoin)
+            );
+        }
+
+        return newJoin;
     }
 
     if (nodeType == ExecutionNodeType::Filter)
@@ -299,10 +322,36 @@ std::unique_ptr<ExecutionNode> Optimizer::tryPushDownProjection(
         std::unique_ptr<ExecutionNode> pushedChild =
             tryPushDownProjection(allRequired, std::move(filterChild));
 
-        return std::make_unique<FilterNode>(
+        if (pushedChild && pushedChild->getType() == ExecutionNodeType::Projection)
+        {
+            ProjectionNode* childProjection = dynamic_cast<ProjectionNode*>(pushedChild.get());
+            std::unique_ptr<ExecutionNode> grandChild = childProjection->releaseChild();
+
+            std::unique_ptr<ExecutionNode> newFilter = std::make_unique<FilterNode>(
+                condition,
+                std::move(grandChild)
+            );
+
+            return std::make_unique<ProjectionNode>(
+                requiredColumns,
+                std::move(newFilter)
+            );
+        }
+
+        std::unique_ptr<ExecutionNode> newFilter = std::make_unique<FilterNode>(
             condition,
             std::move(pushedChild)
         );
+
+        if (allRequired.size() > requiredColumns.size())
+        {
+            return std::make_unique<ProjectionNode>(
+                requiredColumns,
+                std::move(newFilter)
+            );
+        }
+
+        return newFilter;
     }
 
     return std::make_unique<ProjectionNode>(
