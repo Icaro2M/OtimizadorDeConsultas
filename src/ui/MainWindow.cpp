@@ -102,7 +102,6 @@ void MainWindow::renderInfoSection() const
     ImGui::Separator();
     ImGui::Spacing();
 
-    ImGui::Text("Algebra Relacional");
     ImGui::Spacing();
     m_RelationalAlgebraPanel.render(m_CurrentResult.relationalAlgebra);
 

@@ -50,7 +50,7 @@ QueryProcessingResult QueryProcessorService::process(const std::string& sql) con
         }
 
         result.originalPlan = buildPlanNodeView(*originalPlan.getRoot());
-        result.relationalAlgebra = buildRelationalAlgebra(originalPlan);
+        
 
         Optimizer optimizer;
         ExecutionPlan optimizedPlan = optimizer.optimize(std::move(originalPlan));
@@ -61,7 +61,10 @@ QueryProcessingResult QueryProcessorService::process(const std::string& sql) con
             return result;
         }
 
+        result.relationalAlgebra = buildRelationalAlgebra(optimizedPlan);
+
         result.optimizedPlan = buildPlanNodeView(*optimizedPlan.getRoot());
+
         fillExecutionOrder(*optimizedPlan.getRoot(), result.executionOrder);
 
         result.success = true;
@@ -165,6 +168,65 @@ PlanNodeView QueryProcessorService::buildPlanNodeView(const ExecutionNode& node)
     return nodeView;
 }
 
+int QueryProcessorService::getSubtreeDepth(const ExecutionNode& node) const
+{
+    if (node.getType() == ExecutionNodeType::TableScan)
+    {
+        return 0;
+    }
+
+    if (node.getType() == ExecutionNodeType::Filter)
+    {
+        const FilterNode* filterNode = dynamic_cast<const FilterNode*>(&node);
+
+        if (filterNode != nullptr && filterNode->getChild() != nullptr)
+        {
+            return 1 + getSubtreeDepth(*filterNode->getChild());
+        }
+
+        return 0;
+    }
+
+    if (node.getType() == ExecutionNodeType::Projection)
+    {
+        const ProjectionNode* projectionNode = dynamic_cast<const ProjectionNode*>(&node);
+
+        if (projectionNode != nullptr && projectionNode->getChild() != nullptr)
+        {
+            return 1 + getSubtreeDepth(*projectionNode->getChild());
+        }
+
+        return 0;
+    }
+
+    if (node.getType() == ExecutionNodeType::Join)
+    {
+        const JoinNode* joinNode = dynamic_cast<const JoinNode*>(&node);
+
+        if (joinNode != nullptr)
+        {
+            int leftDepth = 0;
+            int rightDepth = 0;
+
+            if (joinNode->getLeftChild() != nullptr)
+            {
+                leftDepth = getSubtreeDepth(*joinNode->getLeftChild());
+            }
+
+            if (joinNode->getRightChild() != nullptr)
+            {
+                rightDepth = getSubtreeDepth(*joinNode->getRightChild());
+            }
+
+            return 1 + std::max(leftDepth, rightDepth);
+        }
+
+        return 0;
+    }
+
+    return 0;
+}
+
 void QueryProcessorService::fillExecutionOrder(const ExecutionNode& node, std::vector<std::string>& executionOrder) const
 {
     if (node.getType() == ExecutionNodeType::TableScan)
@@ -185,14 +247,29 @@ void QueryProcessorService::fillExecutionOrder(const ExecutionNode& node, std::v
 
         if (joinNode != nullptr)
         {
-            if (joinNode->getLeftChild() != nullptr)
+            const ExecutionNode* firstChild = joinNode->getLeftChild();
+            const ExecutionNode* secondChild = joinNode->getRightChild();
+
+            if (joinNode->getLeftChild() != nullptr && joinNode->getRightChild() != nullptr)
             {
-                fillExecutionOrder(*joinNode->getLeftChild(), executionOrder);
+                const int leftDepth = getSubtreeDepth(*joinNode->getLeftChild());
+                const int rightDepth = getSubtreeDepth(*joinNode->getRightChild());
+
+                if (rightDepth > leftDepth)
+                {
+                    firstChild = joinNode->getRightChild();
+                    secondChild = joinNode->getLeftChild();
+                }
             }
 
-            if (joinNode->getRightChild() != nullptr)
+            if (firstChild != nullptr)
             {
-                fillExecutionOrder(*joinNode->getRightChild(), executionOrder);
+                fillExecutionOrder(*firstChild, executionOrder);
+            }
+
+            if (secondChild != nullptr)
+            {
+                fillExecutionOrder(*secondChild, executionOrder);
             }
 
             const Condition condition = joinNode->getJoinCondition();

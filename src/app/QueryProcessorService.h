@@ -4,6 +4,7 @@
 
 #include <string>
 #include <vector>
+#include <memory>
 
 class ExecutionPlan;
 class ExecutionNode;
@@ -18,6 +19,7 @@ public:
 
 private:
     PlanNodeView buildPlanNodeView(const ExecutionNode& node) const;
+    int getSubtreeDepth(const ExecutionNode& node) const;
     void fillExecutionOrder(const ExecutionNode& node, std::vector<std::string>& executionOrder) const;
     std::string buildRelationalAlgebra(const ExecutionPlan& plan) const;
 
